@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Contatore Ricovero</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00695C">
+    <style>
+        :root {
+            --primary: #00695C;
+            --background: #E0F2F1;
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #FFFFFF;
+            --accent: #B2DFDB;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            color: var(--text-dark);
+            overflow: hidden; /* Prevent scrolling, use swipe only */
+        }
+
+        #header {
+            width: 100%;
+            padding: 20px 0;
+            background-color: var(--primary);
+            color: var(--text-light);
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            box-sizing: border-box;
+            touch-action: pan-x; /* Help with swipe performance */
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .giorno-title {
+            font-size: 2.5rem;
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .pwa-image {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .stat-line {
+            font-size: 1.2rem;
+            margin: 8px 0;
+        }
+
+        .swipe-hint {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 20px;
+        }
+
+        #torna-oggi-btn {
+            display: none; /* Hidden by default */
+            background-color: var(--primary);
+            color: var(--text-light);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+
+        #torna-oggi-btn:active {
+            background-color: #004d40;
+        }
+
+        /* Swipe visual feedback */
+        .swipe-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .swipe-overlay.right { background: linear-gradient(to right, rgba(0,0,0,0.1), transparent); opacity: 1; }
+        .swipe-overlay.left { background: linear-gradient(to left, rgba(0,0,0,0.1), transparent); opacity: 1; }
+
+    </style>
+</head>
+<body>
+    <div id="header">
+        <div id="real-time-clock">Caricamento...</div>
+    </div>
+
+    <div id="app-container">
+        <div class="card" id="day-card">
+            <img src="./image.png" alt="Icona Ricovero" class="pwa-image">
+            <div class="giorno-title" id="displayed-day-title">Giorno 1</div>
+            <div class="stat-line" id="elapsed-info">...</div>
+            <div class="stat-line" id="remaining-info">...</div>
+            <p class="swipe-hint">Scorri a destra/sinistra per navigare</p>
+        </div>
+        <button id="torna-oggi-btn">Torna ad Oggi</button>
+    </div>
+
+    <div class="swipe-overlay" id="swipe-feedback"></div>
+
+    <script>
+        // --- Configurazione ---
+        const startDate = new Date(Date.UTC(new Date().getFullYear(), 6, 6, 0, 0, 0)); // 6 Luglio (0-indexed 6)
+        const totalDuration = 28;
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + totalDuration - 1);
+
+        // --- Stato ---
+        let actualCurrentDay = calculateCurrentDay();
+        let displayedDay = actualCurrentDay; // Partiamo sempre da oggi
+        
+        // --- Elementi DOM ---
+        const clockEl = document.getElementById('real-time-clock');
+        const dayTitleEl = document.getElementById('displayed-day-title');
+        const elapsedEl = document.getElementById('elapsed-info');
+        const remainingEl = document.getElementById('remaining-info');
+        const tornaOggiBtn = document.getElementById('torna-oggi-btn');
+        const appContainer = document.getElementById('app-container');
+        const swipeFeedback = document.getElementById('swipe-feedback');
+
+        // --- Inizializzazione ---
+        if (displayedDay < 1 || displayedDay > totalDuration) {
+            // Se fuori intervallo, mostra il primo giorno o l'ultimo
+            displayedDay = (actualCurrentDay < 1) ? 1 : totalDuration;
+        }
+        updateUI();
+        startClock();
+        setupSwipeDetection();
+
+        // --- Funzioni Core ---
+        function calculateCurrentDay() {
+            const today = new Date();
+            const timeDiff = today.getTime() - startDate.getTime();
+            const dayDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+            return dayDiff + 1; // 1-indexed
+        }
+
+        function updateUI() {
+            actualCurrentDay = calculateCurrentDay(); // Ricalcola oggi ogni volta
+
+            // Clampa il giorno visualizzato
+            if (displayedDay < 1) displayedDay = 1;
+            if (displayedDay > totalDuration) displayedDay = totalDuration;
+
+            dayTitleEl.textContent = `Giorno ${displayedDay} di ${totalDuration}`;
+            elapsedEl.textContent = `Giorni trascorsi: ${displayedDay}`;
+            remainingEl.textContent = `Giorni rimanenti: ${totalDuration - displayedDay}`;
+
+            // Mostra/nascondi pulsante "Torna ad Oggi"
+            if (displayedDay !== actualCurrentDay && (actualCurrentDay >= 1 && actualCurrentDay <= totalDuration)) {
+                tornaOggiBtn.style.display = 'block';
+            } else {
+                tornaOggiBtn.style.display = 'none';
+            }
+        }
+
+        function startClock() {
+            function updateClock() {
+                const now = new Date();
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+                clockEl.textContent = `Oggi è: ${now.toLocaleDateString('it-IT', options)}`;
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        // --- Navigazione e Swipe ---
+        function changeDay(delta) {
+            const newDay = displayedDay + delta;
+            if (newDay >= 1 && newDay <= totalDuration) {
+                displayedDay = newDay;
+                updateUI();
+            }
+        }
+
+        tornaOggiBtn.addEventListener('click', () => {
+            actualCurrentDay = calculateCurrentDay(); // Assicurati di avere il giorno esatto
+            if (actualCurrentDay >= 1 && actualCurrentDay <= totalDuration) {
+                displayedDay = actualCurrentDay;
+                updateUI();
+            }
+        });
+
+        function setupSwipeDetection() {
+            let touchStartX = 0;
+            let touchEndX = 0;
+            const minSwipeDistance = 50;
+
+            appContainer.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+            }, false);
+
+            appContainer.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].clientX;
+                handleSwipe();
+            }, false);
+
+            function handleSwipe() {
+                const deltaX = touchStartX - touchEndX;
+
+                if (Math.abs(deltaX) > minSwipeDistance) {
+                    if (deltaX > 0) {
+                        // Swipe Sinistra (Giorno Successivo)
+                        changeDay(1);
+                        showSwipeFeedback('left');
+                    } else {
+                        // Swipe Destra (Giorno Precedente)
+                        changeDay(-1);
+                        showSwipeFeedback('right');
+                    }
+                }
+            }
+
+            function showSwipeFeedback(direction) {
+                swipeFeedback.className = `swipe-overlay ${direction}`;
+                setTimeout(() => swipeFeedback.className = 'swipe-overlay', 300);
+            }
+        }
+
+        // --- Service Worker Registration (for PWA) ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
