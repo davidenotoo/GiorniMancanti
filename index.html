@@ -3,9 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Contatore Ricovero</title>
+    
+    <title>Contatore Ricovero - Davide Noto</title>
+    <meta name="description" content="Applicazione per seguire il percorso e il passaggio dei giorni di ricovero di Davide Noto, monitorando in tempo reale lo stato e i giorni rimanenti.">
+    <meta name="robots" content="index, follow">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Contatore Ricovero - Davide Noto">
+    <meta property="og:description" content="PWA per monitorare i giorni trascorsi e rimanenti del periodo di ricovero di Davide Noto e tenere traccia dei progressi.">
+    <meta property="og:image" content="./image.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="300">
+    <meta property="og:image:height" content="300">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Contatore Ricovero - Davide Noto">
+    <meta name="twitter:description" content="PWA per monitorare i giorni trascorsi e rimanenti del periodo di ricovero di Davide Noto e tenere traccia dei progressi.">
+    <meta name="twitter:image" content="./image.jpg">
+
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00695C">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Ricovero Davide">
+
     <style>
         :root {
             --primary: #00695C;
@@ -101,19 +122,17 @@
             margin-bottom: 0;
         }
 
-        /* Contenitore inferiore per i comandi (Frecce + Pulsante Oggi) */
         .controls-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             width: 100%;
             max-width: 360px;
-            height: 50px; /* Altezza fissa per evitare oscillazioni verticali */
+            height: 50px; 
             box-sizing: border-box;
             padding: 0 10px;
         }
 
-        /* Stile tondo per le frecce di navigazione */
         .nav-arrow {
             width: 45px;
             height: 45px;
@@ -137,7 +156,7 @@
         }
 
         #torna-oggi-btn {
-            visibility: hidden; /* Gestito via JS preservando lo spazio */
+            visibility: hidden; 
             background-color: var(--primary);
             color: var(--text-light);
             border: none;
@@ -215,7 +234,6 @@
         const btnPrev = document.getElementById('btn-prev');
         const btnNext = document.getElementById('btn-next');
 
-        // Imposta il giorno iniziale entro i limiti corretti
         if (displayedDay < 1 || displayedDay > totalDuration) {
             displayedDay = (actualCurrentDay < 1) ? 1 : totalDuration;
         }
@@ -224,7 +242,6 @@
         startClock();
         setupSwipeDetection();
 
-        // --- Event Listeners per i pulsanti freccia ---
         btnPrev.addEventListener('click', () => {
             changeDay(-1);
             showSwipeFeedback('right');
@@ -235,7 +252,6 @@
             showSwipeFeedback('left');
         });
 
-        // --- Funzioni di Calcolo ---
         function calculateCurrentDay() {
             const today = new Date();
             const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0);
@@ -250,24 +266,20 @@
             if (displayedDay < 1) displayedDay = 1;
             if (displayedDay > totalDuration) displayedDay = totalDuration;
 
-            // Calcolo della data specifica per il giorno correntemente visualizzato
             const targetDate = new Date(startDate);
             targetDate.setDate(startDate.getDate() + displayedDay - 1);
             
             const dateOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
             const formattedDate = targetDate.toLocaleDateString('it-IT', dateOptions);
 
-            // Aggiornamento dei testi della Card
             dayTitleEl.textContent = `Giorno ${displayedDay} di ${totalDuration}`;
             dayDateEl.textContent = formattedDate;
             elapsedEl.textContent = `Giorni trascorsi: ${displayedDay}`;
             remainingEl.textContent = `Giorni rimanenti: ${totalDuration - displayedDay}`;
 
-            // Nasconde visivamente la freccia sinistra se siamo al giorno 1, o la destra se siamo al 28 (mantenendo lo spazio fisso)
             btnPrev.style.visibility = (displayedDay === 1) ? 'hidden' : 'visible';
             btnNext.style.visibility = (displayedDay === totalDuration) ? 'hidden' : 'visible';
 
-            // Gestione della visibilità del pulsante "Torna ad Oggi" tramite visibility
             if (displayedDay !== actualCurrentDay && (actualCurrentDay >= 1 && actualCurrentDay <= totalDuration)) {
                 tornaOggiBtn.style.visibility = 'visible';
             } else {
@@ -285,7 +297,6 @@
             setInterval(updateClock, 1000);
         }
 
-        // --- Navigazione ---
         function changeDay(delta) {
             const newDay = displayedDay + delta;
             if (newDay >= 1 && newDay <= totalDuration) {
@@ -336,7 +347,6 @@
             }
         }
 
-        // --- Service Worker ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').then(registration => {
