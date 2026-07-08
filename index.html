@@ -25,7 +25,7 @@
             align-items: center;
             height: 100vh;
             color: var(--text-dark);
-            overflow: hidden; /* Prevent scrolling, use swipe only */
+            overflow: hidden;
         }
 
         #header {
@@ -35,6 +35,11 @@
             color: var(--text-light);
             text-align: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #real-time-clock {
+            font-size: 1.1rem;
+            font-weight: 500;
         }
 
         #app-container {
@@ -47,7 +52,7 @@
             max-width: 400px;
             padding: 20px;
             box-sizing: border-box;
-            touch-action: pan-x; /* Help with swipe performance */
+            touch-action: pan-x;
         }
 
         .card {
@@ -59,34 +64,45 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             margin-bottom: 20px;
             position: relative;
+            box-sizing: border-box;
         }
 
         .giorno-title {
-            font-size: 2.5rem;
+            font-size: 2.3rem;
             color: var(--primary);
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        .giorno-data {
+            font-size: 1.3rem;
+            color: #555555;
+            font-weight: 500;
+            margin-bottom: 20px;
+            text-transform: capitalize;
         }
 
         .pwa-image {
             max-width: 150px;
             height: auto;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .stat-line {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             margin: 8px 0;
+            color: var(--text-dark);
         }
 
         .swipe-hint {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #888;
-            margin-top: 20px;
+            margin-top: 25px;
+            margin-bottom: 0;
         }
 
         #torna-oggi-btn {
-            display: none; /* Hidden by default */
+            display: none;
             background-color: var(--primary);
             color: var(--text-light);
             border: none;
@@ -103,7 +119,6 @@
             background-color: #004d40;
         }
 
-        /* Swipe visual feedback */
         .swipe-overlay {
             position: fixed;
             top: 0;
@@ -115,9 +130,8 @@
             opacity: 0;
             transition: opacity 0.3s;
         }
-        .swipe-overlay.right { background: linear-gradient(to right, rgba(0,0,0,0.1), transparent); opacity: 1; }
-        .swipe-overlay.left { background: linear-gradient(to left, rgba(0,0,0,0.1), transparent); opacity: 1; }
-
+        .swipe-overlay.right { background: linear-gradient(to right, rgba(0,0,0,0.08), transparent); opacity: 1; }
+        .swipe-overlay.left { background: linear-gradient(to left, rgba(0,0,0,0.08), transparent); opacity: 1; }
     </style>
 </head>
 <body>
@@ -127,8 +141,9 @@
 
     <div id="app-container">
         <div class="card" id="day-card">
-            <img src="image.jpg" alt="Icona Ricovero" class="pwa-image">
+            <img src="./image.jpg" alt="Icona Ricovero" class="pwa-image">
             <div class="giorno-title" id="displayed-day-title">Giorno 1</div>
+            <div class="giorno-data" id="displayed-day-date">...</div>
             <div class="stat-line" id="elapsed-info">...</div>
             <div class="stat-line" id="remaining-info">...</div>
             <p class="swipe-hint">Scorri a destra/sinistra per navigare</p>
@@ -139,54 +154,62 @@
     <div class="swipe-overlay" id="swipe-feedback"></div>
 
     <script>
-        // --- Configurazione ---
-        const startDate = new Date(Date.UTC(new Date().getFullYear(), 6, 6, 0, 0, 0)); // 6 Luglio (0-indexed 6)
+        // --- Configurazione data d'inizio (6 Luglio dell'anno corrente) ---
+        const startDate = new Date(new Date().getFullYear(), 6, 6, 12, 0, 0); 
         const totalDuration = 28;
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + totalDuration - 1);
 
         // --- Stato ---
         let actualCurrentDay = calculateCurrentDay();
-        let displayedDay = actualCurrentDay; // Partiamo sempre da oggi
+        let displayedDay = actualCurrentDay; 
         
         // --- Elementi DOM ---
         const clockEl = document.getElementById('real-time-clock');
         const dayTitleEl = document.getElementById('displayed-day-title');
+        const dayDateEl = document.getElementById('displayed-day-date');
         const elapsedEl = document.getElementById('elapsed-info');
         const remainingEl = document.getElementById('remaining-info');
         const tornaOggiBtn = document.getElementById('torna-oggi-btn');
         const appContainer = document.getElementById('app-container');
         const swipeFeedback = document.getElementById('swipe-feedback');
 
-        // --- Inizializzazione ---
+        // Imposta il giorno iniziale entro i limiti corretti
         if (displayedDay < 1 || displayedDay > totalDuration) {
-            // Se fuori intervallo, mostra il primo giorno o l'ultimo
             displayedDay = (actualCurrentDay < 1) ? 1 : totalDuration;
         }
+
         updateUI();
         startClock();
         setupSwipeDetection();
 
-        // --- Funzioni Core ---
+        // --- Funzioni di Calcolo ---
         function calculateCurrentDay() {
             const today = new Date();
-            const timeDiff = today.getTime() - startDate.getTime();
+            const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0);
+            const timeDiff = todayNoon.getTime() - startDate.getTime();
             const dayDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
-            return dayDiff + 1; // 1-indexed
+            return dayDiff + 1; 
         }
 
         function updateUI() {
-            actualCurrentDay = calculateCurrentDay(); // Ricalcola oggi ogni volta
+            actualCurrentDay = calculateCurrentDay(); 
 
-            // Clampa il giorno visualizzato
             if (displayedDay < 1) displayedDay = 1;
             if (displayedDay > totalDuration) displayedDay = totalDuration;
 
+            // Calcolo della data specifica per il giorno correntemente visualizzato
+            const targetDate = new Date(startDate);
+            targetDate.setDate(startDate.getDate() + displayedDay - 1);
+            
+            const dateOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            const formattedDate = targetDate.toLocaleDateString('it-IT', dateOptions);
+
+            // Aggiornamento dei testi della Card
             dayTitleEl.textContent = `Giorno ${displayedDay} di ${totalDuration}`;
+            dayDateEl.textContent = formattedDate;
             elapsedEl.textContent = `Giorni trascorsi: ${displayedDay}`;
             remainingEl.textContent = `Giorni rimanenti: ${totalDuration - displayedDay}`;
 
-            // Mostra/nascondi pulsante "Torna ad Oggi"
+            // Gestione della visibilità del pulsante "Torna ad Oggi"
             if (displayedDay !== actualCurrentDay && (actualCurrentDay >= 1 && actualCurrentDay <= totalDuration)) {
                 tornaOggiBtn.style.display = 'block';
             } else {
@@ -197,14 +220,14 @@
         function startClock() {
             function updateClock() {
                 const now = new Date();
-                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-                clockEl.textContent = `Oggi è: ${now.toLocaleDateString('it-IT', options)}`;
+                const clockOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+                clockEl.textContent = `Oggi è: ${now.toLocaleDateString('it-IT', clockOptions)}`;
             }
             updateClock();
             setInterval(updateClock, 1000);
         }
 
-        // --- Navigazione e Swipe ---
+        // --- Navigazione ---
         function changeDay(delta) {
             const newDay = displayedDay + delta;
             if (newDay >= 1 && newDay <= totalDuration) {
@@ -214,7 +237,7 @@
         }
 
         tornaOggiBtn.addEventListener('click', () => {
-            actualCurrentDay = calculateCurrentDay(); // Assicurati di avere il giorno esatto
+            actualCurrentDay = calculateCurrentDay();
             if (actualCurrentDay >= 1 && actualCurrentDay <= totalDuration) {
                 displayedDay = actualCurrentDay;
                 updateUI();
@@ -240,11 +263,9 @@
 
                 if (Math.abs(deltaX) > minSwipeDistance) {
                     if (deltaX > 0) {
-                        // Swipe Sinistra (Giorno Successivo)
                         changeDay(1);
                         showSwipeFeedback('left');
                     } else {
-                        // Swipe Destra (Giorno Precedente)
                         changeDay(-1);
                         showSwipeFeedback('right');
                     }
@@ -257,13 +278,13 @@
             }
         }
 
-        // --- Service Worker Registration (for PWA) ---
+        // --- Service Worker ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').then(registration => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    console.log('ServiceWorker registrato con successo.');
                 }, err => {
-                    console.log('ServiceWorker registration failed: ', err);
+                    console.log('Registrazione ServiceWorker fallita: ', err);
                 });
             });
         }
