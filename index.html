@@ -58,48 +58,13 @@
         .card {
             background-color: var(--card-bg);
             border-radius: 15px;
-            /* Aumentato il padding laterale per fare spazio ai pulsanti */
-            padding: 30px 50px; 
+            padding: 30px 25px; 
             width: 100%;
             text-align: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             position: relative;
             box-sizing: border-box;
-        }
-
-        /* Stile dei pulsanti freccia */
-        .nav-arrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 40px;
-            height: 40px;
-            background-color: var(--primary);
-            color: var(--text-light);
-            border: none;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            transition: background-color 0.2s, transform 0.1s;
-            z-index: 5;
-        }
-
-        .nav-arrow:active {
-            background-color: #004d40;
-            transform: translateY(-50%) scale(0.95);
-        }
-
-        .nav-arrow.left {
-            left: 10px;
-        }
-
-        .nav-arrow.right {
-            right: 10px;
         }
 
         .giorno-title {
@@ -118,7 +83,7 @@
         }
 
         .pwa-image {
-            max-width: 130px;
+            max-width: 140px;
             height: auto;
             margin-bottom: 15px;
         }
@@ -136,8 +101,43 @@
             margin-bottom: 0;
         }
 
+        /* Contenitore inferiore per i comandi (Frecce + Pulsante Oggi) */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 360px;
+            height: 50px; /* Altezza fissa per evitare oscillazioni verticali */
+            box-sizing: border-box;
+            padding: 0 10px;
+        }
+
+        /* Stile tondo per le frecce di navigazione */
+        .nav-arrow {
+            width: 45px;
+            height: 45px;
+            background-color: var(--primary);
+            color: var(--text-light);
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: background-color 0.2s, transform 0.1s;
+            flex-shrink: 0;
+        }
+
+        .nav-arrow:active {
+            background-color: #004d40;
+            transform: scale(0.95);
+        }
+
         #torna-oggi-btn {
-            display: none;
+            visibility: hidden; /* Gestito via JS preservando lo spazio */
             background-color: var(--primary);
             color: var(--text-light);
             border: none;
@@ -148,6 +148,7 @@
             cursor: pointer;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: background-color 0.2s;
+            white-space: nowrap;
         }
 
         #torna-oggi-btn:active {
@@ -176,18 +177,19 @@
 
     <div id="app-container">
         <div class="card" id="day-card">
-            <button class="nav-arrow left" id="btn-prev">&#10094;</button>
-
             <img src="./image.jpg" alt="Icona Ricovero" class="pwa-image">
             <div class="giorno-title" id="displayed-day-title">Giorno 1</div>
             <div class="giorno-data" id="displayed-day-date">...</div>
             <div class="stat-line" id="elapsed-info">...</div>
             <div class="stat-line" id="remaining-info">...</div>
-            <p class="swipe-hint">Scorri o usa le frecce per navigare</p>
-
-            <button class="nav-arrow right" id="btn-next">&#10095;</button>
+            <p class="swipe-hint">Scorri o usa le frecce sotto per navigare</p>
         </div>
-        <button id="torna-oggi-btn">Torna ad Oggi</button>
+
+        <div class="controls-row">
+            <button class="nav-arrow" id="btn-prev">&#10094;</button>
+            <button id="torna-oggi-btn">Torna ad Oggi</button>
+            <button class="nav-arrow" id="btn-next">&#10095;</button>
+        </div>
     </div>
 
     <div class="swipe-overlay" id="swipe-feedback"></div>
@@ -225,12 +227,12 @@
         // --- Event Listeners per i pulsanti freccia ---
         btnPrev.addEventListener('click', () => {
             changeDay(-1);
-            showSwipeFeedback('right'); // Feedback visivo opzionale anche al click
+            showSwipeFeedback('right');
         });
 
         btnNext.addEventListener('click', () => {
             changeDay(1);
-            showSwipeFeedback('left'); // Feedback visivo opzionale anche al click
+            showSwipeFeedback('left');
         });
 
         // --- Funzioni di Calcolo ---
@@ -261,15 +263,15 @@
             elapsedEl.textContent = `Giorni trascorsi: ${displayedDay}`;
             remainingEl.textContent = `Giorni rimanenti: ${totalDuration - displayedDay}`;
 
-            // Gestione visibilità delle frecce (opzionale: nasconderle se siamo al limite)
+            // Nasconde visivamente la freccia sinistra se siamo al giorno 1, o la destra se siamo al 28 (mantenendo lo spazio fisso)
             btnPrev.style.visibility = (displayedDay === 1) ? 'hidden' : 'visible';
             btnNext.style.visibility = (displayedDay === totalDuration) ? 'hidden' : 'visible';
 
-            // Gestione della visibilità del pulsante "Torna ad Oggi"
+            // Gestione della visibilità del pulsante "Torna ad Oggi" tramite visibility
             if (displayedDay !== actualCurrentDay && (actualCurrentDay >= 1 && actualCurrentDay <= totalDuration)) {
-                tornaOggiBtn.style.display = 'block';
+                tornaOggiBtn.style.visibility = 'visible';
             } else {
-                tornaOggiBtn.style.display = 'none';
+                tornaOggiBtn.style.visibility = 'hidden';
             }
         }
 
@@ -300,7 +302,6 @@
             }
         });
 
-        // Estratta la funzione per poterla riutilizzare sui click
         function showSwipeFeedback(direction) {
             swipeFeedback.className = `swipe-overlay ${direction}`;
             setTimeout(() => swipeFeedback.className = 'swipe-overlay', 300);
